@@ -239,3 +239,9 @@ This case would actually be **Few to few** as there can be a large number of aut
 ```
 
 > We can also embed books inside authors collection, but this can cause data integrity issues.
+
+### Summary
+
+* 1:1 Embed
+* 1:Many Embed (from many to the one)
+* many:many Link
