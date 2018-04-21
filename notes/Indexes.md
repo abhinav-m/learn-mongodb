@@ -8,10 +8,102 @@ This also improves performance in case of update cases (where the record has to 
 
 > MongoDB uses btrees in its (MMAPv1 storage engine) / b+trees (WiredTiger) storage engine.
 
-To create indexes in MongoDB:
+* To create indexes in MongoDB:
 
 ```js
 db.collection.createIndex({ student_id: 1, class_id: 1 });
+```
+
+* To List indexes in MongoDB:
+
+```js
+db.collection.getIndexes();
+//Output
+[
+  //One index on this collection , by default on _id
+  {
+    v: 2,
+    key: {
+      _id: 1
+    },
+    name: '_id_',
+    ns: 'crunchbase.companies'
+  }
+];
+```
+
+* To Drop Indexes in MongoDB:
+
+```js
+db.collection.dropIndex({ student_id: 1 });
+```
+
+## Multikey indexes
+
+For indexes specified on array fields in documents, MultiKey indexes are created for the specified documents.
+
+The index would automatically be created as multikey on the first value inserted as an array for the specified keys.
+
+This is done on insertion of the documents with array values (on the fields specified as the index).
+
+```js
+db.foo.createIndex({tags:1,favcolr:1})
+//First insert
+{
+    name:"Abhinav",
+    tags:["Reading","music","badminton"],
+    favcolr:"red",
+    location:["NOIDA","DELHI"]
+}
+//Second Insert:
+{
+    name:"Abhinav",
+    tags:"reading",
+    favcolr:"[red","blue"],
+    location:["NOIDA","DELHI"]
+}
+//Not allowed to have on two ARRAY fields. This insertion will fail.
+{
+    name:"Abhinav",
+    tags:["Reading","music","badminton"],
+    favcolr:"[red","blue"],
+    location:["NOIDA","DELHI"]
+}
+```
+
+> In the above document, if we need to create an index on the `tags` field and `favcolr` field, MongoDB will create a multi-key index for the same.
+
+**NOTE: MongoDB does NOT allow creation of multikey indexes for two array fields. This would result in a cartesian product(cross join in relational terms) of the two fields.**
+
+To create indexes for objects embedded inside of arrays in a document, the command `db.collection.createIndex` can be used with the dot notation.
+
+Example:
+
+```js
+db.students.createIndex({ 'scores.score': 1 });
+
+//Students collection:
+{
+    name:"Abhinav",
+    scores:[
+        {
+            score:"99",
+            type:"Exam"
+        },
+        {
+            score:"59",
+            type:"Homework"
+        },
+        {
+            score:"79",
+            type:"Homework"
+        },
+        {
+            score:"70",
+            type:"practical"
+        }
+    ]
+}
 ```
 
 ## Concerns for indexes
