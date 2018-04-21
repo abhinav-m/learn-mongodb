@@ -75,7 +75,7 @@ db.foo.createIndex({tags:1,favcolr:1})
 
 **NOTE: MongoDB does NOT allow creation of multikey indexes for two array fields. This would result in a cartesian product(cross join in relational terms) of the two fields.**
 
-To create indexes for objects embedded inside of arrays in a document, the command `db.collection.createIndex` can be used with the dot notation.
+* To create indexes for objects embedded inside of arrays in a document, the command `db.collection.createIndex` can be used with the dot notation.
 
 Example:
 
@@ -105,6 +105,8 @@ db.students.createIndex({ 'scores.score': 1 });
     ]
 }
 ```
+
+To write querries for the same, care must be taken to ensure using the correct operator , eg `$elemmatch:"abc"` In case of array fields on multiple conditions.
 
 ## Concerns for indexes
 
