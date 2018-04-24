@@ -180,6 +180,12 @@ For example in the above case
 
 * Every Query being run on the data should use an index to return the data.
 
+* Index Cardinality: Regular Index 1 <-> 1 (Each index is mapped to a document with its value) Sparse Index 1 <= num of documents (keys might be null in index) MultiKey Indexes 1 <= num of values in array in the document
+
+> When using MongoDB,data being accessed is retrieved from the WORKING SET -> This is in memory, and thus a seperate call doesn't need to be made to the database for fetching data. A key concern here is to keep indexes in memory too (so a seperate fetch for indexes doesn't need to be made for fetching indexes from db.), thus index sizes must be kept according to virtual memory available.(so they can fit into memory)
+
+**NOTE**: _WiredTiger storage engine compresses indexes (prefix compression) while storing indexes, allowing smaller index sizes , and thus better performance_
+
 ## Using Explain
 
 ### Query Planner mode
