@@ -62,4 +62,45 @@ The example output for the same is:
 
 ## Embedding values within a document field
 
+We can create a field consisting of nested document fields within mongodb using the `$` operator.
+
+Example:
+
+```js
+db.companies
+  .aggregate([
+    {
+      $match: {
+        'funding_rounds.investments.financial_org.permalink': 'greylock'
+      }
+    },
+    {
+      $project: {
+        _id: 0,
+        name: 1,
+        //Creating a founded field based on three fields founded_year, founded_month and founded_day
+        founded: {
+          year: '$founded_year',
+          month: '$founded_month',
+          day: '$founded_day'
+        }
+      }
+    }
+  ])
+  .pretty();
+```
+
+```json
+//Output
+{
+  "name": "WEbook",
+  //Embedded fied consisting of the embedded fields above.
+  "founded": {
+    "year": 2007,
+    "month": 1,
+    "day": 1
+  }
+}
+```
+
 There are many operations possible on projection stage in the aggregation framework pipeline.(concatenating strings, taking averages of fields,etc) The only thing which is not possible is to CHANGE the data type of a document field during the projection stage.
