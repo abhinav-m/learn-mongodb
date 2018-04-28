@@ -58,4 +58,23 @@ Both of these queries produce the same output:
 { "name" : "Pando Networks" }
 ```
 
+Another example of the same:
+
+```js
+//Sorts BEFORE limit stage , inefficient
+db.companies.aggregate([
+  { $match: { founded_year: 2004 } }, //Match stage -> Matches founded year
+  { $sort: { name: 1 } }, // Sort stage -> Sort documents found
+  { $limit: 5 }, //Limits output to 5 documents
+  { $project: { _id: 0, name: 1 } } //Projects name to our result output
+]);
+//Sorts AFTER limit stage , inefficient
+db.companies.aggregate([
+  { $match: { founded_year: 2004 } }, //Match stage -> Matches founded year
+  { $limit: 5 }, //Limits output to 5 documents
+  { $sort: { name: 1 } }, //Sorts After limiting the documents
+  { $project: { _id: 0, name: 1 } } //Projects name to our result output
+]);
+```
+
 > Make SURE to pass only documents that are necessary from one stage to another while using the aggregation pipeline.
