@@ -78,3 +78,17 @@ db.companies.aggregate([
 ```
 
 > Make SURE to pass only documents that are necessary from one stage to another while using the aggregation pipeline.
+
+### Expressions
+
+From the MongoDB documentation:
+
+Some pipeline stages take a pipeline expression as the operand. Pipeline expressions specify the transformation to apply to the input documents. Expressions have a document structure and can contain other expression.
+
+Pipeline expressions can only operate on the current document in the pipeline and cannot refer to data from other documents: expression operations provide in-memory transformation of documents.
+
+Generally, expressions are stateless and are only evaluated when seen by the aggregation process with one exception: accumulator expressions.
+
+The accumulators, used in the $group stage, maintain their state (e.g. totals, maximums, minimums, and related data) as documents progress through the pipeline.
+
+Changed in version 3.2: Some accumulators are available in the $project stage; however, when used in the $project stage, the accumulators do not maintain their state across documents.
