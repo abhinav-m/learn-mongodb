@@ -1,6 +1,18 @@
 # Unwind operator
 
+## Introduction and key points
+
 The `$unwind` operator is used for documents which contain array fields within them to create a single document from all the results for the field which is an array.
+
+### Key Points
+
+* For a document of the sort: { key1:a ,key2:b,key3:[c,d,e]} The output will be (one document for each match using the unwind operator) -> {key1:a ,key2:b :key3:c} ,{key1:a ,key2:b :key3:d},{key1:a ,key2:b :key3:e}
+
+* While building the pipeline, consider the input and output of each stage of the pipeline to get the correct result.
+
+* For efficient matches, keep in mind the order of operations(matches and unwinding of keys) in stages.
+
+* The same stage can be used in multiple places in the aggregation pipeline.
 
 Example , In the crunchbase dataset we have a fields called `funding_rounds` with it's format as below:
 
@@ -240,4 +252,135 @@ Output is as follows, note that `individualFunders` are unwinded and result in t
 { "name" : "Digg", "fundingOrganization" : "greylock", "amount" : 28700000, "year" : 2008 }
 { "name" : "Digg", "fundingOrganization" : "omidyar-network", "amount" : 28700000, "year" : 2008 }
 { "name" : "Digg", "fundingOrganization" : "svb-financial-group", "amount" : 28700000, "year" : 2008 }
+```
+
+## Improving query using stages of aggregation
+
+```js
+// Move match stage after unwind stages -- inefficient.
+db.companies.aggregate([
+  //These unwinds work on all documents in the collections , which causes the query to be slower.
+  { $unwind: '$funding_rounds' },
+  { $unwind: '$funding_rounds.investments' },
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      individualFunder: '$funding_rounds.investments.person.permalink',
+      fundingOrganization:
+        '$funding_rounds.investments.financial_org.permalink',
+      amount: '$funding_rounds.raised_amount',
+      year: '$funding_rounds.funded_year'
+    }
+  }
+]);
+```
+
+// Instead, use a second match stage.
+
+```js
+db.companies.aggregate([
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  //Here the unwind runs on documents which match "greylock", only.
+  { $unwind: '$funding_rounds' },
+  { $unwind: '$funding_rounds.investments' },
+  //2nd match stage is to remove the extra results( as greylock was an array field and it produces multiple documents where one
+  //value is greylock
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      individualFunder: '$funding_rounds.investments.person.permalink',
+      fundingOrganization:
+        '$funding_rounds.investments.financial_org.permalink',
+      amount: '$funding_rounds.raised_amount',
+      year: '$funding_rounds.funded_year'
+    }
+  }
+]);
+```
+
+Same output as shown above.
+
+// Second unwind stage not strictly necessary
+//If we dont want individual documents for each value in $funding_rounds.investments
+//We can remove the 2nd unwind stage(and get result as an array.)
+
+```js
+db.companies.aggregate([
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  { $unwind: '$funding_rounds' },
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      individualFunder: '$funding_rounds.investments.person.permalink',
+      fundingOrganization:
+        '$funding_rounds.investments.financial_org.permalink',
+      amount: '$funding_rounds.raised_amount',
+      year: '$funding_rounds.funded_year'
+    }
+  }
+]);
+```
+
+//Example output:
+
+```json
+{ "name" : "Digg", "individualFunder" : [ ], "fundingOrganization" : [ "greylock", "omidyar-network" ], "amount" : 8500000, "year" : 2006 }
+{ "name" : "Digg", "individualFunder" : [ "marc-andreessen", "reid-hoffman", "ron-conway", "al-avery" ], "fundingOrganization" : [ "greylock", "omidyar-network", "floodgate", "sv-angel" ], "amount" : 2800000, "year" : 2005 }
+{ "name" : "Digg", "individualFunder" : [ ], "fundingOrganization" : [ "highland-capital-partners", "greylock", "omidyar-network", "svb-financial-group" ], "amount" : 28700000, "year" : 2008 }
+{ "name" : "Facebook", "individualFunder" : [ ], "fundingOrganization" : [ "greylock", "meritech-capital-partners", "founders-fund", "sv-angel" ], "amount" : 27500000, "year" : 2006 }
+{ "name" : "Revision3", "individualFunder" : [ ], "fundingOrganization" : [ "greylock", "sv-angel" ], "amount" : 1000000, "year" : 2006 }
+```
+
+// If we don't care about the funder we can simplify.
+// Let's sort as well.
+
+```js
+db.companies.aggregate([
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  { $unwind: '$funding_rounds' },
+  {
+    $match: { 'funding_rounds.investments.financial_org.permalink': 'greylock' }
+  },
+  {
+    $project: {
+      _id: 0,
+      name: 1,
+      amount: '$funding_rounds.raised_amount',
+      year: '$funding_rounds.funded_year'
+    }
+  },
+  { $sort: { year: 1 } }
+]);
+```
+
+Sample output:
+
+```json
+//No repeated output.
+{"name" : "LinkedIn", "amount" : 10000000, "year" : 2004 }
+{ "name" : "Digg", "amount" : 2800000, "year" : 2005 }
+{ "name" : "Farecast", "amount" : 7000000, "year" : 2005 }
+{ "name" : "Wink", "amount" : 6200000, "year" : 2005 }
+{ "name" : "Vudu", "amount" : 21000000, "year" : 2005 }
+{ "name" : "Workday", "amount" : 15000000, "year" : 2005 }
+{ "name" : "Red Bend Software", "amount" : 10000000, "year" : 2005 }
+...
 ```
