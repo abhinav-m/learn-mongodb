@@ -26,3 +26,9 @@ This is the default value.
 //Not recommended, no write acknowledgement sent by server.
 { "w":0,"j":"unack"}
 ```
+
+## Avoiding network errors
+
+MongoDB might give an error message during a database updation operation
+
+This can primarily occur due to a network failure (TCP reset) AFTER an update operation has been performed. There is no way of knowing whether the write has occurred in the database in this case.
